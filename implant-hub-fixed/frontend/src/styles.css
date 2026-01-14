@@ -6,7 +6,6 @@
   --muted: #5b6b62;
   --border: #d9e3dd;
 
-  /* Verde agro corporativo (ajuste fino depois com o guia de marca, se tiver) */
   --primary: #1f7a3a;
   --primary-2: #2ea44f;
   --primary-soft: rgba(31, 122, 58, 0.12);
@@ -21,9 +20,7 @@
 
 *{ box-sizing: border-box; }
 
-html, body{
-  height: 100%;
-}
+html, body{ height: 100%; }
 
 body{
   margin: 0;
@@ -36,10 +33,63 @@ body{
 
 a{ color: inherit; }
 
-.container{
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 28px 18px 60px;
+.layout{
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar{
+  padding: 18px 14px;
+  border-right: 1px solid var(--border);
+  background: rgba(255,255,255,0.60);
+  backdrop-filter: blur(10px);
+}
+
+.brand{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 10px 14px;
+}
+
+.brand .title{
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  font-size: 18px;
+}
+
+.brand .sub{
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.nav{
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.navbtn{
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.75);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.navbtn.active{
+  border-color: rgba(31, 122, 58, 0.45);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.content{
+  padding: 26px 18px 60px;
 }
 
 .topbar{
@@ -50,23 +100,17 @@ a{ color: inherit; }
   margin-bottom: 18px;
 }
 
-.brand{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .h1{
   margin: 0;
-  font-size: 28px;
+  font-size: 26px;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
 .subtitle{
-  margin: 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .badge{
@@ -103,13 +147,11 @@ a{ color: inherit; }
   gap: 14px;
 }
 
-@media (min-width: 900px){
+@media (min-width: 980px){
   .grid{
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.2fr 0.8fr;
   }
-  .span-2{
-    grid-column: span 2;
-  }
+  .span-2{ grid-column: span 2; }
 }
 
 .card{
@@ -123,7 +165,7 @@ a{ color: inherit; }
 
 .card h2{
   margin: 0 0 10px;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: -0.01em;
 }
 
@@ -134,7 +176,19 @@ a{ color: inherit; }
   gap: 10px;
 }
 
-select, input{
+label{
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.field{
+  display: grid;
+  gap: 6px;
+}
+
+select, input, textarea{
   width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
@@ -144,7 +198,9 @@ select, input{
   font-size: 14px;
 }
 
-select:focus, input:focus{
+textarea{ min-height: 92px; resize: vertical; }
+
+select:focus, input:focus, textarea:focus{
   border-color: rgba(31, 122, 58, 0.65);
   box-shadow: 0 0 0 4px var(--primary-soft);
 }
@@ -157,7 +213,7 @@ select:focus, input:focus{
   padding: 10px 12px;
   border-radius: 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 800;
   font-size: 14px;
 }
 
@@ -167,12 +223,9 @@ select:focus, input:focus{
   color: #fff;
 }
 
-.button:hover{
-  filter: brightness(0.98);
-}
-
-.button:active{
-  transform: translateY(1px);
+.button:disabled{
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .small{
@@ -182,33 +235,27 @@ select:focus, input:focus{
   line-height: 1.4;
 }
 
-.list{
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
+.table{
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
 }
 
-.list li{
-  padding: 10px 10px;
+.table th, .table td{
+  border-top: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: left;
+}
+
+.pill{
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.75);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.list li + li{ margin-top: 8px; }
-
-.radio{
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.mono{
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background: rgba(255,255,255,0.8);
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .alert{
@@ -228,4 +275,5 @@ select:focus, input:focus{
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.7);
   overflow: auto;
+  font-size: 13px;
 }
