@@ -27,6 +27,13 @@ function normalize(s: string) {
   return (s || "").trim().toLowerCase();
 }
 
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "todo", label: "Planejamento" },
+  { value: "doing", label: "Em andamento" },
+  { value: "blocked", label: "Bloqueado" },
+  { value: "done", label: "Concluído" },
+];
+
 export default function App() {
   const [view, setView] = useState<"projects" | "users">("projects");
 
@@ -51,6 +58,12 @@ export default function App() {
   const [responsaveis, setResponsaveis] = useState<number[]>([]);
 
   const [result, setResult] = useState<any>(null);
+
+  // Checklist viewer/editor
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedProjectName, setSelectedProjectName] = useState<string>("");
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [checklistLoading, setChecklistLoading] = useState(false);
 
   const actorHeader = useMemo(
     () => (actorUserId ? { "X-User-Id": String(actorUserId) } : {}),
@@ -99,7 +112,6 @@ export default function App() {
     const found = list.find((t) => normalize(t.name) === normalize(DEFAULT_TEMPLATE_NAME));
     if (found) return found.id;
 
-    // cria automaticamente um template padrão
     const payload = {
       name: DEFAULT_TEMPLATE_NAME,
       description: "Template padrão criado automaticamente pela UI",
@@ -138,7 +150,6 @@ export default function App() {
       body: JSON.stringify(payload),
     });
 
-    // a rota retorna o template base, então pegamos id
     await loadTemplates();
     return created.id;
   }
@@ -167,10 +178,8 @@ export default function App() {
       return;
     }
 
-    // garante template padrão
     const templateId = await ensureDefaultTemplate();
 
-    // cria projeto (client_name vira "título do projeto")
     const created = await safeFetchJSON(`${API}/projects`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...actorHeader },
@@ -182,11 +191,9 @@ export default function App() {
 
     const projectId = created.project_id as number;
 
-    // pega checklist criado
     const checklistRes = await safeFetchJSON(`${API}/projects/${projectId}/checklist`);
     const items: ChecklistItem[] = checklistRes.items || [];
 
-    // acha os 4 itens “seção”
     const byTitle = new Map<string, ChecklistItem>();
     for (const it of items) byTitle.set(normalize(it.title), it);
 
@@ -195,7 +202,6 @@ export default function App() {
     const pendItem = byTitle.get(normalize("Pendências"));
     const respItem = byTitle.get(normalize("Responsáveis"));
 
-    // preenche config/status/pendências via PATCH no checklist
     const patches: Promise<any>[] = [];
 
     if (configItem) {
@@ -228,7 +234,6 @@ export default function App() {
       );
     }
 
-    // vincula responsáveis (ProjectMember) + registra no item “Responsáveis”
     if (responsaveis.length) {
       for (const uid of responsaveis) {
         patches.push(
@@ -263,15 +268,61 @@ export default function App() {
       info: "Projeto criado. Checklist preenchido nas seções básicas.",
     });
 
-    // refresh list
     await loadProjects();
 
-    // limpa form (pra criar outro rápido)
     setProjectTitle("");
     setInitialConfig("");
     setPendencias("");
     setResponsaveis([]);
     setImplStatus("todo");
+
+    // já abre o checklist do projeto recém-criado
+    await openChecklist(projectId);
+  }
+
+  // ------- CHECKLIST: OPEN / REFRESH / UPDATE -------
+  async function openChecklist(projectId: number) {
+    setSelectedProjectId(projectId);
+    setChecklistLoading(true);
+    try {
+      const data = await safeFetchJSON(`${API}/projects/${projectId}/checklist`);
+      const proj: Project = data.project;
+      const items: ChecklistItem[] = data.items || [];
+      setSelectedProjectName(proj?.client_name || `Projeto #${projectId}`);
+      setChecklistItems(items);
+    } finally {
+      setChecklistLoading(false);
+    }
+  }
+
+  async function refreshChecklist() {
+    if (!selectedProjectId) return;
+    await openChecklist(selectedProjectId);
+  }
+
+  function updateLocalItem(itemId: number, patch: Partial<ChecklistItem>) {
+    setChecklistItems((prev) =>
+      prev.map((it) => (it.id === itemId ? { ...it, ...patch } : it))
+    );
+  }
+
+  async function saveChecklistItem(item: ChecklistItem) {
+    const payload = {
+      status: item.status,
+      assignee: item.assignee,
+      notes: item.notes,
+    };
+    const saved = await safeFetchJSON(
+      `${API}/projects/${item.project_id}/checklist/${item.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...actorHeader },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    // garante que a tela reflete o que o backend salvou
+    updateLocalItem(item.id, saved);
   }
 
   // ------- INIT -------
@@ -282,7 +333,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ------- UI HELPERS -------
   function toggleResponsible(id: number) {
     setResponsaveis((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -334,7 +384,7 @@ export default function App() {
             <h1 className="h1">{view === "projects" ? "Projetos" : "Usuários"}</h1>
             <p className="subtitle">
               {view === "projects"
-                ? "Crie projetos sem JSON: título, configurações, status, pendências e responsáveis."
+                ? "Crie projetos sem JSON e edite o checklist dentro da tela."
                 : "Cadastre usuários com nome e e-mail (pra vincular em projetos)."}
             </p>
           </div>
@@ -437,10 +487,11 @@ export default function App() {
                 <div className="field" style={{ width: 220 }}>
                   <label>Status da implantação</label>
                   <select value={implStatus} onChange={(e) => setImplStatus(e.target.value as any)}>
-                    <option value="todo">Planejamento</option>
-                    <option value="doing">Em andamento</option>
-                    <option value="blocked">Bloqueado</option>
-                    <option value="done">Concluído</option>
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -458,7 +509,7 @@ export default function App() {
                 <div className="field" style={{ flex: 1 }}>
                   <label>Pendências</label>
                   <textarea
-                    placeholder="Uma por linha. Ex.:\n- Criar usuário no SAP\n- Validar cotação\n- Importar produtos"
+                    placeholder={"Uma por linha.\nEx.:\n- Criar usuário no SAP\n- Validar cotação\n- Importar produtos"}
                     value={pendencias}
                     onChange={(e) => setPendencias(e.target.value)}
                   />
@@ -523,6 +574,7 @@ export default function App() {
                     <th>Nome</th>
                     <th>Status</th>
                     <th>Template</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -532,11 +584,20 @@ export default function App() {
                       <td>{p.client_name}</td>
                       <td><span className="pill">{p.status}</span></td>
                       <td>#{p.template_id}</td>
+                      <td>
+                        <button
+                          className="button"
+                          style={{ padding: "8px 10px" }}
+                          onClick={() => openChecklist(p.id).catch(() => {})}
+                        >
+                          Abrir checklist
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {!projects.length && (
                     <tr>
-                      <td colSpan={4} style={{ color: "var(--muted)" }}>
+                      <td colSpan={5} style={{ color: "var(--muted)" }}>
                         Nenhum projeto ainda.
                       </td>
                     </tr>
@@ -545,10 +606,107 @@ export default function App() {
               </table>
 
               <div className="small">
-                Observação: os 4 blocos (config/status/pendências/responsáveis) são gravados como itens do checklist + membros do projeto.
-                Isso garante rastreabilidade sem você ter que “mexer no banco” agora.
+                Observação: os 4 blocos (config/status/pendências/responsáveis) são itens do checklist + membros do projeto.
               </div>
             </section>
+
+            {/* CHECKLIST VIEWER */}
+            {selectedProjectId && (
+              <section className="card span-2">
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <div>
+                    <h2 style={{ marginBottom: 6 }}>
+                      Checklist — #{selectedProjectId} • {selectedProjectName}
+                    </h2>
+                    <div className="small" style={{ marginTop: 0 }}>
+                      Edite e clique em <strong>Salvar</strong>. Sim, é chato… mas é rastreável. 😄
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    <button className="button" onClick={() => refreshChecklist().catch(() => {})}>
+                      Atualizar
+                    </button>
+                    <button
+                      className="button"
+                      onClick={() => {
+                        setSelectedProjectId(null);
+                        setSelectedProjectName("");
+                        setChecklistItems([]);
+                      }}
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+
+                {checklistLoading ? (
+                  <div className="small">Carregando checklist...</div>
+                ) : (
+                  <table className="table" style={{ marginTop: 12 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: "24%" }}>Item</th>
+                        <th style={{ width: 160 }}>Status</th>
+                        <th style={{ width: 180 }}>Assignee</th>
+                        <th>Notas</th>
+                        <th style={{ width: 120 }}>Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {checklistItems.map((it) => (
+                        <tr key={it.id}>
+                          <td style={{ fontWeight: 800 }}>{it.title}</td>
+                          <td>
+                            <select
+                              value={it.status}
+                              onChange={(e) => updateLocalItem(it.id, { status: e.target.value })}
+                            >
+                              {STATUS_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              value={it.assignee || ""}
+                              placeholder="Nome"
+                              onChange={(e) => updateLocalItem(it.id, { assignee: e.target.value })}
+                            />
+                          </td>
+                          <td>
+                            <textarea
+                              value={it.notes || ""}
+                              placeholder="Anotações / pendências / decisões..."
+                              onChange={(e) => updateLocalItem(it.id, { notes: e.target.value })}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              className="button primary"
+                              style={{ padding: "8px 10px" }}
+                              onClick={() => saveChecklistItem(it).catch(() => {})}
+                            >
+                              Salvar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {!checklistItems.length && (
+                        <tr>
+                          <td colSpan={5} style={{ color: "var(--muted)" }}>
+                            Nenhum item no checklist.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            )}
           </div>
         )}
       </main>
