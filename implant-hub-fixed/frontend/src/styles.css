@@ -1,0 +1,231 @@
+/* ImplantHub — visual “cara Agrotis” (verde, limpo, corporativo) */
+:root{
+  --bg: #f4f7f5;
+  --card: #ffffff;
+  --text: #0f1a14;
+  --muted: #5b6b62;
+  --border: #d9e3dd;
+
+  /* Verde agro corporativo (ajuste fino depois com o guia de marca, se tiver) */
+  --primary: #1f7a3a;
+  --primary-2: #2ea44f;
+  --primary-soft: rgba(31, 122, 58, 0.12);
+
+  --danger: #b42318;
+  --warning: #b54708;
+
+  --radius: 16px;
+  --shadow: 0 10px 30px rgba(16, 24, 20, 0.08);
+  --shadow-soft: 0 6px 20px rgba(16, 24, 20, 0.06);
+}
+
+*{ box-sizing: border-box; }
+
+html, body{
+  height: 100%;
+}
+
+body{
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: radial-gradient(1200px 600px at 10% 0%, rgba(31, 122, 58, 0.10), transparent 60%),
+              radial-gradient(1000px 500px at 90% 10%, rgba(46, 164, 79, 0.08), transparent 55%),
+              var(--bg);
+  color: var(--text);
+}
+
+a{ color: inherit; }
+
+.container{
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 18px 60px;
+}
+
+.topbar{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.brand{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.h1{
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.subtitle{
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  box-shadow: var(--shadow-soft);
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 0 4px rgba(181, 71, 8, 0.12);
+}
+
+.dot.ok{
+  background: var(--primary-2);
+  box-shadow: 0 0 0 4px rgba(46, 164, 79, 0.14);
+}
+
+.grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 900px){
+  .grid{
+    grid-template-columns: 1fr 1fr;
+  }
+  .span-2{
+    grid-column: span 2;
+  }
+}
+
+.card{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.card h2{
+  margin: 0 0 10px;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.row{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+select, input{
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  outline: none;
+  font-size: 14px;
+}
+
+select:focus, input:focus{
+  border-color: rgba(31, 122, 58, 0.65);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.button{
+  appearance: none;
+  border: 1px solid rgba(31, 122, 58, 0.35);
+  background: linear-gradient(180deg, rgba(31,122,58,0.12), rgba(31,122,58,0.06));
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.button.primary{
+  border-color: rgba(31, 122, 58, 0.65);
+  background: linear-gradient(180deg, rgba(31,122,58,0.92), rgba(31,122,58,0.78));
+  color: #fff;
+}
+
+.button:hover{
+  filter: brightness(0.98);
+}
+
+.button:active{
+  transform: translateY(1px);
+}
+
+.small{
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.list{
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li{
+  padding: 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.75);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list li + li{ margin-top: 8px; }
+
+.radio{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.alert{
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 35, 24, 0.25);
+  background: rgba(180, 35, 24, 0.08);
+  padding: 10px 12px;
+  color: #7a271a;
+  font-size: 13px;
+}
+
+.pre{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+  overflow: auto;
+}
