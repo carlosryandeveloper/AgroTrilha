@@ -6,7 +6,7 @@ from app.routers.users import router as users_router
 from app.routers.templates import router as templates_router
 from app.routers.projects import router as projects_router
 
-app = FastAPI(title="ImplantHub API", version="0.2.1")
+app = FastAPI(title="ImplantHub API", version="0.2.2")
 
 # MVP: CORS liberado pra não travar o front
 app.add_middleware(
@@ -24,6 +24,10 @@ def on_startup():
 app.include_router(users_router)
 app.include_router(templates_router)
 app.include_router(projects_router)
+
+@app.get("/")
+def root():
+    return {"ok": True, "docs": "/docs", "health": "/health"}
 
 @app.get("/health")
 def health():
