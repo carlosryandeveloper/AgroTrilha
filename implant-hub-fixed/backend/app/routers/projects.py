@@ -146,7 +146,47 @@ def update_checklist_item(
     return item
 
 
-# ✅ NOVO: criar item manual no checklist (sem Activity / sem JSON no Swagger)
+# ✅ NOVO: excluir item do checklist
+@router.delete("/{project_id}/checklist/{item_id}")
+def delete_checklist_item(
+    project_id: int,
+    item_id: int,
+    session: Session = Depends(get_session),
+    actor_user_id: int | None = Depends(get_actor_user_id),
+):
+    item = session.get(ChecklistItem, item_id)
+    if not item or item.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Item não encontrado.")
+
+    before = item.model_dump()
+
+    session.delete(item)
+    session.commit()
+
+    project = session.get(Project, project_id)
+    if project:
+        now = datetime.utcnow()
+        project.updated_at = now
+        project.updated_by_user_id = actor_user_id
+        session.add(project)
+        session.commit()
+
+    audit(
+        session,
+        project_id=project_id,
+        actor_user_id=actor_user_id,
+        action="checklist.delete",
+        entity_type="ChecklistItem",
+        entity_id=item_id,
+        before=before,
+        after=None,
+        note="Item removido do checklist"
+    )
+
+    return {"ok": True, "deleted_item_id": item_id}
+
+
+# ✅ criar item manual no checklist
 class ChecklistCreateIn(BaseModel):
     title: str
     status: str = "todo"

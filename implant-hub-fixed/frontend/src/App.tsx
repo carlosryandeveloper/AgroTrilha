@@ -65,7 +65,7 @@ export default function App() {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [checklistLoading, setChecklistLoading] = useState(false);
 
-  // ✅ NOVO: adicionar item manual
+  // Add item manual
   const [newItemTitle, setNewItemTitle] = useState("");
   const [newItemStatus, setNewItemStatus] = useState("todo");
   const [newItemAssignee, setNewItemAssignee] = useState("");
@@ -329,7 +329,6 @@ export default function App() {
     updateLocalItem(item.id, saved);
   }
 
-  // ✅ NOVO: adicionar item manual no checklist
   async function addChecklistItem() {
     if (!selectedProjectId) return;
 
@@ -355,6 +354,19 @@ export default function App() {
     setNewItemNotes("");
 
     await refreshChecklist();
+  }
+
+  // ✅ NOVO: excluir item do checklist
+  async function deleteChecklistItem(item: ChecklistItem) {
+    const ok = window.confirm(`Excluir o item "${item.title}"?\n\nEssa ação não tem volta.`);
+    if (!ok) return;
+
+    await safeFetchJSON(`${API}/projects/${item.project_id}/checklist/${item.id}`, {
+      method: "DELETE",
+      headers: { ...actorHeader },
+    });
+
+    setChecklistItems((prev) => prev.filter((x) => x.id !== item.id));
   }
 
   // ------- INIT -------
@@ -427,7 +439,11 @@ export default function App() {
           </div>
         </div>
 
-        {error && <div className="alert"><strong>Erro:</strong> {error}</div>}
+        {error && (
+          <div className="alert">
+            <strong>Erro:</strong> {error}
+          </div>
+        )}
 
         {view === "users" && (
           <div className="grid">
@@ -509,7 +525,10 @@ export default function App() {
 
                 <div className="field" style={{ width: 220 }}>
                   <label>Módulo</label>
-                  <select value={projectModule} onChange={(e) => setProjectModule(e.target.value as any)}>
+                  <select
+                    value={projectModule}
+                    onChange={(e) => setProjectModule(e.target.value as any)}
+                  >
                     <option value="ERP">ERP</option>
                     <option value="Armazenagem">Armazenagem</option>
                     <option value="Produtor Rural">Produtor Rural</option>
@@ -541,7 +560,9 @@ export default function App() {
                 <div className="field" style={{ flex: 1 }}>
                   <label>Pendências</label>
                   <textarea
-                    placeholder={"Uma por linha.\nEx.:\n- Criar usuário no SAP\n- Validar cotação\n- Importar produtos"}
+                    placeholder={
+                      "Uma por linha.\nEx.:\n- Criar usuário no SAP\n- Validar cotação\n- Importar produtos"
+                    }
                     value={pendencias}
                     onChange={(e) => setPendencias(e.target.value)}
                   />
@@ -566,12 +587,11 @@ export default function App() {
                       }}
                       type="button"
                     >
-                      {responsaveis.includes(u.id) ? "✓ " : ""}{u.name}
+                      {responsaveis.includes(u.id) ? "✓ " : ""}
+                      {u.name}
                     </button>
                   ))}
-                  {!users.length && (
-                    <span className="pill">Crie usuários primeiro</span>
-                  )}
+                  {!users.length && <span className="pill">Crie usuários primeiro</span>}
                 </div>
               </div>
 
@@ -614,7 +634,9 @@ export default function App() {
                     <tr key={p.id}>
                       <td>#{p.id}</td>
                       <td>{p.client_name}</td>
-                      <td><span className="pill">{p.status}</span></td>
+                      <td>
+                        <span className="pill">{p.status}</span>
+                      </td>
                       <td>#{p.template_id}</td>
                       <td>
                         <button
@@ -638,7 +660,8 @@ export default function App() {
               </table>
 
               <div className="small">
-                Observação: os 4 blocos (config/status/pendências/responsáveis) são itens do checklist + membros do projeto.
+                Observação: os 4 blocos (config/status/pendências/responsáveis) são itens do checklist +
+                membros do projeto.
               </div>
             </section>
 
@@ -650,7 +673,8 @@ export default function App() {
                       Checklist — #{selectedProjectId} • {selectedProjectName}
                     </h2>
                     <div className="small" style={{ marginTop: 0 }}>
-                      Edite e clique em <strong>Salvar</strong>. Agora também dá pra <strong>Adicionar item</strong>.
+                      Edite e clique em <strong>Salvar</strong>. Agora também dá pra{" "}
+                      <strong>Adicionar</strong> e <strong>Excluir</strong>.
                     </div>
                   </div>
 
@@ -671,7 +695,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ✅ FORM: adicionar item manual */}
+                {/* ADD ITEM */}
                 <div className="row" style={{ marginTop: 12, gap: 12 }}>
                   <div className="field" style={{ flex: 1 }}>
                     <label>Novo item</label>
@@ -686,7 +710,9 @@ export default function App() {
                     <label>Status</label>
                     <select value={newItemStatus} onChange={(e) => setNewItemStatus(e.target.value)}>
                       {STATUS_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -730,7 +756,7 @@ export default function App() {
                         <th style={{ width: 160 }}>Status</th>
                         <th style={{ width: 180 }}>Assignee</th>
                         <th>Notas</th>
-                        <th style={{ width: 120 }}>Ação</th>
+                        <th style={{ width: 170 }}>Ação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -764,13 +790,23 @@ export default function App() {
                             />
                           </td>
                           <td>
-                            <button
-                              className="button primary"
-                              style={{ padding: "8px 10px" }}
-                              onClick={() => saveChecklistItem(it).catch(() => {})}
-                            >
-                              Salvar
-                            </button>
+                            <div className="row" style={{ gap: 8 }}>
+                              <button
+                                className="button primary"
+                                style={{ padding: "8px 10px" }}
+                                onClick={() => saveChecklistItem(it).catch(() => {})}
+                              >
+                                Salvar
+                              </button>
+
+                              <button
+                                className="button"
+                                style={{ padding: "8px 10px", borderColor: "rgba(180,35,24,0.35)" }}
+                                onClick={() => deleteChecklistItem(it).catch(() => {})}
+                              >
+                                Excluir
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
