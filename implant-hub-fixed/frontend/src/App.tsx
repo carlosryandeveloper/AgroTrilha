@@ -6,7 +6,7 @@ type Project = { id: number; template_id: number; client_name: string; status: s
 type ChecklistItem = {
   id: number;
   project_id: number;
-  activity_id: number;
+  activity_id: number | null;
   title: string;
   status: string;
   assignee: string;
@@ -65,6 +65,12 @@ export default function App() {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [checklistLoading, setChecklistLoading] = useState(false);
 
+  // ✅ NOVO: adicionar item manual
+  const [newItemTitle, setNewItemTitle] = useState("");
+  const [newItemStatus, setNewItemStatus] = useState("todo");
+  const [newItemAssignee, setNewItemAssignee] = useState("");
+  const [newItemNotes, setNewItemNotes] = useState("");
+
   const actorHeader = useMemo(
     () => (actorUserId ? { "X-User-Id": String(actorUserId) } : {}),
     [actorUserId]
@@ -104,7 +110,7 @@ export default function App() {
     setProjects(data);
   }
 
-  // ------- TEMPLATE AUTO (sem você digitar JSON) -------
+  // ------- TEMPLATE AUTO -------
   async function ensureDefaultTemplate(): Promise<number> {
     const list: Template[] = await safeFetchJSON(`${API}/templates`);
     setTemplates(list);
@@ -171,7 +177,7 @@ export default function App() {
     await loadUsers();
   }
 
-  // ------- PROJECTS: CREATE (sem JSON manual) -------
+  // ------- PROJECTS: CREATE -------
   async function createProject() {
     if (!projectTitle.trim()) {
       setError("Dê um nome pro projeto (ex.: ERP, Armazenagem, Produtor Rural).");
@@ -276,7 +282,6 @@ export default function App() {
     setResponsaveis([]);
     setImplStatus("todo");
 
-    // já abre o checklist do projeto recém-criado
     await openChecklist(projectId);
   }
 
@@ -321,8 +326,35 @@ export default function App() {
       }
     );
 
-    // garante que a tela reflete o que o backend salvou
     updateLocalItem(item.id, saved);
+  }
+
+  // ✅ NOVO: adicionar item manual no checklist
+  async function addChecklistItem() {
+    if (!selectedProjectId) return;
+
+    if (!newItemTitle.trim()) {
+      setError("Informe um título pro item do checklist.");
+      return;
+    }
+
+    await safeFetchJSON(`${API}/projects/${selectedProjectId}/checklist`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...actorHeader },
+      body: JSON.stringify({
+        title: newItemTitle.trim(),
+        status: newItemStatus,
+        assignee: newItemAssignee,
+        notes: newItemNotes,
+      }),
+    });
+
+    setNewItemTitle("");
+    setNewItemStatus("todo");
+    setNewItemAssignee("");
+    setNewItemNotes("");
+
+    await refreshChecklist();
   }
 
   // ------- INIT -------
@@ -529,7 +561,7 @@ export default function App() {
                           ? "rgba(31, 122, 58, 0.6)"
                           : "var(--border)",
                         boxShadow: responsaveis.includes(u.id)
-                          ? "0 0 0 4px var(--primary-soft)"
+                          ? "0 0 0 4px rgba(31, 122, 58, 0.12)"
                           : "none",
                       }}
                       type="button"
@@ -610,7 +642,6 @@ export default function App() {
               </div>
             </section>
 
-            {/* CHECKLIST VIEWER */}
             {selectedProjectId && (
               <section className="card span-2">
                 <div className="row" style={{ justifyContent: "space-between" }}>
@@ -619,7 +650,7 @@ export default function App() {
                       Checklist — #{selectedProjectId} • {selectedProjectName}
                     </h2>
                     <div className="small" style={{ marginTop: 0 }}>
-                      Edite e clique em <strong>Salvar</strong>. Sim, é chato… mas é rastreável. 😄
+                      Edite e clique em <strong>Salvar</strong>. Agora também dá pra <strong>Adicionar item</strong>.
                     </div>
                   </div>
 
@@ -638,6 +669,55 @@ export default function App() {
                       Fechar
                     </button>
                   </div>
+                </div>
+
+                {/* ✅ FORM: adicionar item manual */}
+                <div className="row" style={{ marginTop: 12, gap: 12 }}>
+                  <div className="field" style={{ flex: 1 }}>
+                    <label>Novo item</label>
+                    <input
+                      value={newItemTitle}
+                      onChange={(e) => setNewItemTitle(e.target.value)}
+                      placeholder="Ex.: Treinar equipe / Validar impostos / Conferir cadastros..."
+                    />
+                  </div>
+
+                  <div className="field" style={{ width: 220 }}>
+                    <label>Status</label>
+                    <select value={newItemStatus} onChange={(e) => setNewItemStatus(e.target.value)}>
+                      {STATUS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="field" style={{ width: 240 }}>
+                    <label>Assignee</label>
+                    <input
+                      value={newItemAssignee}
+                      onChange={(e) => setNewItemAssignee(e.target.value)}
+                      placeholder="Nome"
+                    />
+                  </div>
+                </div>
+
+                <div className="row" style={{ marginTop: 10, alignItems: "flex-end" }}>
+                  <div className="field" style={{ flex: 1 }}>
+                    <label>Notas</label>
+                    <textarea
+                      value={newItemNotes}
+                      onChange={(e) => setNewItemNotes(e.target.value)}
+                      placeholder="Detalhes, links, observações..."
+                    />
+                  </div>
+
+                  <button
+                    className="button primary"
+                    style={{ height: 42 }}
+                    onClick={() => addChecklistItem().catch(() => {})}
+                  >
+                    Adicionar item
+                  </button>
                 </div>
 
                 {checklistLoading ? (

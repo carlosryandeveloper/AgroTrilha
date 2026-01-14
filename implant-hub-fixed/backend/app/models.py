@@ -83,7 +83,9 @@ class ChecklistItem(SQLModel, table=True):
     __tablename__ = "checklist_items"
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="projects.id", index=True)
-    activity_id: int = Field(foreign_key="activities.id", index=True)
+
+    # ✅ AGORA É OPCIONAL: permite criar itens manuais no checklist (sem Activity)
+    activity_id: Optional[int] = Field(default=None, foreign_key="activities.id", index=True)
 
     title: str
     status: str = "todo"  # todo / doing / done / blocked

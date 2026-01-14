@@ -95,6 +95,7 @@ class ChecklistUpdateIn(BaseModel):
     assignee: str | None = None
     notes: str | None = None
 
+
 @router.patch("/{project_id}/checklist/{item_id}")
 def update_checklist_item(
     project_id: int,
@@ -145,9 +146,65 @@ def update_checklist_item(
     return item
 
 
+# ✅ NOVO: criar item manual no checklist (sem Activity / sem JSON no Swagger)
+class ChecklistCreateIn(BaseModel):
+    title: str
+    status: str = "todo"
+    assignee: str = ""
+    notes: str = ""
+
+
+@router.post("/{project_id}/checklist", response_model=ChecklistItem)
+def add_checklist_item(
+    project_id: int,
+    payload: ChecklistCreateIn,
+    session: Session = Depends(get_session),
+    actor_user_id: int | None = Depends(get_actor_user_id),
+):
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+
+    now = datetime.utcnow()
+
+    item = ChecklistItem(
+        project_id=project_id,
+        activity_id=None,  # item manual
+        title=payload.title,
+        status=payload.status,
+        assignee=payload.assignee,
+        notes=payload.notes,
+        updated_at=now,
+        updated_by_user_id=actor_user_id,
+    )
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    project.updated_at = now
+    project.updated_by_user_id = actor_user_id
+    session.add(project)
+    session.commit()
+
+    audit(
+        session,
+        project_id=project_id,
+        actor_user_id=actor_user_id,
+        action="checklist.add",
+        entity_type="ChecklistItem",
+        entity_id=item.id,
+        before=None,
+        after=item.model_dump(),
+        note="Item criado manualmente"
+    )
+
+    return item
+
+
 class AddMemberIn(BaseModel):
     user_id: int
     role: str = "member"
+
 
 @router.post("/{project_id}/members")
 def add_member(
